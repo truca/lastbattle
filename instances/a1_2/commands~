@@ -1,0 +1,4 @@
+./mrp -t 500 -p model_a1_2.txt -i assignment_a1_2.txt -o salida_a1_2.txt -s 100 -ts 2 -fb best_salida_a1_2.txt
+./mrp -t 500 -p model_a1_2.txt -i assignment_a1_2.txt -o salida_a1_2.txt -s 100 -ts 5 -fb best_salida_a1_2.txt
+./mrp -t 700 -p model_a1_2.txt -i assignment_a1_2.txt -o salida_a1_2.txt -s 100 -ts 2 -fb best_salida_a1_2.txt
+./mrp -t 700 -p model_a1_2.txt -i assignment_a1_2.txt -o salida_a1_2.txt -s 100 -ts 5 -fb best_salida_a1_2.txt

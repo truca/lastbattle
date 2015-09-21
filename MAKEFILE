@@ -1,0 +1,9 @@
+INPUTS = model_a1_1.txt assignment_a1_1.txt
+
+mrp: main.cpp
+	@g++ main.cpp -o mrp
+
+salida.txt: mrp $(INPUTS)
+	@./mrp -t 300 -p model_a1_1.txt -i assignment_a1_1.txt -o salida.txt -s 100
+
+all: mrp salida.txt

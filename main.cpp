@@ -42,7 +42,10 @@ class Neighborhood{
 class Variables{
 	public:
     int process_move_cost_weight, service_move_cost_weight, machine_move_cost_weight;
-    int resources_amount, machines_amount, services_amount, processes_amount, balances_amount;
+    int resources_amount, machines_amount, services_amount, processes_amount, balances_amount, tabu_size, max_time;
+    const char* output_filename; 
+    const char* best_output_filename;
+    time_t timer;
     vector<Resource> resources;
     vector<Machine> machines;
     vector<Service> services;
@@ -58,7 +61,7 @@ class Solution{
 }sol;
 class Tabu_Element{
 	public:
-    int process, machine;
+	int process, machine;
 };
 class Tabu_List{
 	public:
@@ -68,6 +71,7 @@ class Tabu_List{
 bool contains(vector<int> vec, int element);
 void create_neighborhoods_and_locations();
 void update_solution_value();
+void update_resources();
 
 //falta hacer todas las funciones de lectura
 void read_resources(ifstream & model){
@@ -173,16 +177,12 @@ void read_initial_solution(ifstream & solution){
 	}
 	//calculate used resources
 	for(i=0; i<var.machines_amount; i++){
-		for(j=0; j<var.resources_amount; j++){
-			int resource_used = 0;
-			for(k=0; k<var.processes_amount; k++){
-				if(sol.process_asignations.at(k) == i){
-					resource_used += var.processes.at(k).requirements.at(j);
-				}
-			}
-			var.machines.at(i).resources_used.push_back(resource_used);
-		}
+		var.machines.at(i).resources_used.resize(var.resources_amount, 0);
+		/*for(j=0; j<var.resources_amount; j++){
+			var.machines.at(i).resources_used.push_back(0);
+		}*/
 	}
+	update_resources();
 	update_solution_value();
 }
 void read_files(const char* problem_model, const char* initial_solution){
@@ -242,13 +242,19 @@ void create_neighborhoods_and_locations(){
 bool contains(vector<int> vec, int element){
 	int i, size = vec.size();
 	for(i=0; i < size; i++){
+		/*cout << "into_contains" << endl;
+		cout << "into_contains2" << vec.at(i) << element << endl;*/
 		if(vec.at(i) == element) return true;
 	}
 	return false;
 }
 bool contain_all(vector<int> container, vector<int> searched){
+	//cout << "before size" << endl;
 	int i, searched_size = searched.size();
+	//cout << "after size: " << searched_size << endl;
 	for(i=0; i < searched_size; i++){
+		/*cout << "into: " << i << endl;
+		cout << "into: " << searched.at(i) << endl;*/
 		if(!contains(container, searched.at(i))) return false;
 	}
 	return true;
@@ -273,16 +279,12 @@ int available(int machine, int resource){
 	return mach.capacities.at(resource) - mach.resources_used.at(resource);
 }
 bool fits(int process, int machine){
-	//cout << "fits" << endl;
 	int i;
-	Machine mach = var.machines.at(machine);
 	Process proc = var.processes.at(process);
-	/*cout << "var resources_amount " << var.resources_amount << endl;
-	cout << "mach capacities " << mach.capacities.size() << endl;
-	cout << "mach resources used " << mach.resources_used.size() << endl;
-	cout << "var requirements " << proc.requirements.size() << endl;*/
 	for(i=0; i < var.resources_amount; i++){
-		if((mach.capacities.at(i) - mach.resources_used.at(i)) < proc.requirements.at(i)) return false;
+		if(available(machine, i) < proc.requirements.at(i)) return false;
+		/*if(available(machine, i) - proc.requirements.at(i) < 0)
+			cout << "NEGATIVE, machine: " << machine << ", resource: " << i << endl;*/
 	}
 	return true;
 }
@@ -300,13 +302,13 @@ bool valid_move(int process, int machine){
 	Machine mach = var.machines.at(machine);
 	Process proc = var.processes.at(process);
 	Service serv = var.services.at(proc.service);
-	//cout << "service constraint" << endl;
+	//cout << "service" << endl;
 	if(!contains(mach.services, proc.service)){ //service constraint
-		//cout << "capacity constraint" << endl;
+		//cout << "capacity" << endl;
 		if(fits(process, machine)){ //capacity constraint
-			//cout << "dependency constraint" << endl;
+			//cout << "dependencies" << endl;
 			if(contain_all(var.neighborhoods.at(mach.neighborhood).services, serv.dependencies)){ //dependencies constraint
-				//cout << "spread constraint" << endl;
+				//cout << "spread" << endl;
 				if(spread(proc.service, process, machine) >= serv.spread_min){ //spread constraint
 					return true;
 				}
@@ -317,74 +319,97 @@ bool valid_move(int process, int machine){
 	return false;
 }
 bool is_tabu(int process, int machine){
-	int i, size = tabu.list.size();
+	int i, size = var.tabu_size;
 	for(i=0; i < size; i++){
 		if(tabu.list.at(i).process == process && tabu.list.at(i).machine == machine) return true;
 	}
 	return false;
 }
-
-void release_resources(int process, int machine){
-	int i, size = var.resources_amount;
-	//if the process started in that machine, keep transient resources
-	if(sol.initial_solution.at(process) == machine){
-		for(i=0; i < size; i++){
-			if(!var.resources.at(i).transient){
-				var.machines.at(machine).resources_used.at(i) -= var.processes.at(process).requirements.at(i);
-			}
-		}
-	}else{
-		for(i=0; i < size; i++){
-			var.machines.at(machine).resources_used.at(i) -= var.processes.at(process).requirements.at(i);
-		}
-	}
-}
-void charge_resources(int process, int machine){
-	int i, size = var.resources_amount;
-	//if the process started in that machine, keep transient resources
-	if(sol.initial_solution.at(process) == machine){
-		for(i=0; i < size; i++){
-			if(!var.resources.at(i).transient){
-				var.machines.at(machine).resources_used.at(i) += var.processes.at(process).requirements.at(i);
-			}
-		}
-	}else{
-		for(i=0; i < size; i++){
-			var.machines.at(machine).resources_used.at(i) += var.processes.at(process).requirements.at(i);
-		}
-	}
-}
-void update_services(int process, int machine){
+void add_tabu(int process, int machine){
 	int i;
-	
-	//add missing services
-	Process proc = var.processes.at(process);
-	Machine mach = var.machines.at(machine);
-	Location loc = var.locations.at(mach.location);
-	Neighborhood neigh = var.neighborhoods.at(mach.neighborhood);
-	if(!contains(mach.services, proc.service)) mach.services.push_back(proc.service);
-	if(!contains(loc.services, proc.service)) loc.services.push_back(proc.service);
-	if(!contains(neigh.services, proc.service)) neigh.services.push_back(proc.service);
-	
-	//remove services
-	Machine old_mach = var.machines.at(sol.process_asignations.at(process));
-	Location old_loc = var.locations.at(old_mach.location);
-	Neighborhood old_neigh = var.neighborhoods.at(old_mach.neighborhood);
-	remove(old_mach.services, proc.service);
-	if(!machines_contain_service(old_loc.services, proc.service))
-		remove(old_loc.services, proc.service);
-	if(!machines_contain_service(old_neigh.services, proc.service))
-		remove(old_neigh.services, proc.service);
+	for(i=0; i < (var.tabu_size - 1); i++){
+		tabu.list.at(i).process = tabu.list.at(i+1).process;
+		tabu.list.at(i).machine = tabu.list.at(i+1).machine;
+	}
+	tabu.list.at(var.tabu_size - 1).process = process;
+	tabu.list.at(var.tabu_size - 1).machine = machine;
+}
+
+void update_resources(){
+	int i, j, k;
+	for(i=0; i < var.machines_amount; i++){
+		for(j=0; j < var.resources_amount; j++){
+			int resource_used = 0;
+			for(k=0; k < var.processes_amount; k++){
+				if((var.resources.at(j).transient && sol.initial_solution.at(k) == i) || (sol.process_asignations.at(k) == i)){
+					resource_used += var.processes.at(k).requirements.at(j);
+				}
+			}
+			var.machines.at(i).resources_used.at(j) = resource_used;
+		}
+	}
+}
+void update_services(){
+	int i, j, k;
+	//machines
+	for(i=0; i < var.machines_amount; i++){
+		Machine mach = var.machines.at(i);
+		mach.services.clear();
+		for(j=0; j < var.processes_amount; j++){
+			Process proc = var.processes.at(j);
+			if(sol.process_asignations.at(j) == i){
+				if(!contains(mach.services, proc.service)){
+					mach.services.push_back(proc.service);
+				}	
+			}
+		}
+	}
+	//locations
+	for(i=0; i < var.locations.size(); i++){
+		Location loc = var.locations.at(i);
+		loc.services.clear();
+		for(j=0; j < loc.machines.size(); j++){
+			Machine mach = var.machines.at(j);
+			for(k=0; k < mach.services.size(); k++){
+				if(!contains(loc.services, mach.services.at(k))){
+					loc.services.push_back(mach.services.at(k));
+				}
+			}
+		}
+	}
+	//neighborhoods
+	for(i=0; i < var.neighborhoods.size(); i++){
+		Neighborhood neigh = var.neighborhoods.at(i);
+		neigh.services.clear();
+		for(j=0; j < neigh.machines.size(); j++){
+			Machine mach = var.machines.at(j);
+			for(k=0; k < mach.services.size(); k++){
+				if(!contains(neigh.services, mach.services.at(k))){
+					neigh.services.push_back(mach.services.at(k));
+				}
+			}
+		}
+	}
 }
 void print_solution(){
 	int i;
 	
 	ofstream myfile;
-	myfile.open("new_solution.txt");
+	myfile.open(var.output_filename);
 	
 	for(i=0; i < var.processes_amount; i++){
 		myfile << sol.process_asignations.at(i) << " ";
 	}
+	
+	myfile.close();
+}
+void print_best_solution(){
+	ofstream myfile;
+	myfile.open(var.best_output_filename, ios_base::app);
+	time_t timer;
+	time(&timer);
+	
+	myfile << difftime(timer,var.timer) << " " << sol.best_value << endl;
 	
 	myfile.close();
 }
@@ -442,23 +467,34 @@ void update_solution_value(){
 		int i;
 		sol.best_value = sol.value;
 		cout << "New best solution: " << sol.best_value << endl;
+		/*for(i=0; i < var.processes_amount; i++){
+			cout << " " << sol.process_asignations.at(i);
+		}
+		cout << endl;*/
 		for(i=0; i < var.processes_amount; i++){
 			sol.best_process_asignations.at(i) = sol.process_asignations.at(i);
 		}
 		print_solution();
+		print_best_solution();
 	}
 }
 void assign(int process, int machine){
-	release_resources(process, sol.process_asignations.at(process));
-	charge_resources(process, machine);
-	update_services(process, machine);
-	
 	sol.process_asignations.at(process) = machine;
+	update_services();
+	update_resources();
 	update_solution_value();
+	int i, j;
+	for(i=0; i < var.machines_amount; i++){
+		for(j=0; j < var.resources_amount; j++){
+			//cout << "machine: " << i << ", resource: " << j << ", used: " << var.machines.at(i).resources_used.at(j) << ", capacity: " << var.machines.at(i).capacities.at(j) << ", available: " << available(i,j) << endl;
+		}
+	}
 }
 
 void greedy(){
 	int i, init, end, aux, machine;
+	time_t timer;
+		
 	unsigned int j;
 	vector<int> processes;
 	//cout << "filling array" << endl;
@@ -467,6 +503,8 @@ void greedy(){
 	}
 	//cout << "swaping order to make it more random" << endl;
 	for(i=0; i < var.processes_amount/2; i++){
+		time(&timer);
+		if(difftime(timer,var.timer) > var.max_time) break;
 		init = rand() % var.processes_amount;
 		end = rand() % var.processes_amount;
 
@@ -474,9 +512,12 @@ void greedy(){
 		processes.at(init) = processes.at(end);
 		processes.at(end) = aux;
 	}
+	
 	vector<int> possibilities;
 	//cout << "filling possibilities" << endl;
 	for(i=0; i < var.processes_amount; i++){
+		time(&timer);
+		if(difftime(timer,var.timer) > var.max_time) break;
 		for(j=0; j < 3; j++){
 			machine = rand() % var.machines_amount;
 			//cout << "validating move" << endl;
@@ -488,53 +529,64 @@ void greedy(){
 		int process_assignation = sol.process_asignations.at(i);
 		//cout << "selecting the best possibility" << endl;
 		for(j=0; j < possibilities.size(); j++){
-			assign(i, possibilities.at(j));
-			new_value = sol.value;
-			if(new_value >= actual_value){
-				//undo
-				assign(i, process_assignation);
-			}else{
-				actual_value = new_value;
-				process_assignation = possibilities.at(j);
+			time(&timer);
+			if(difftime(timer,var.timer) > var.max_time) break;
+			if(valid_move(i, possibilities.at(j))){
+				assign(i, possibilities.at(j));
+				new_value = sol.value;
+				if(new_value >= actual_value){
+					//undo
+					assign(i, process_assignation);
+				}else{
+					actual_value = new_value;
+					process_assignation = possibilities.at(j);
+				}
 			}
 		}
+		add_tabu(i, process_assignation);
 	}
 }
 void tabu_search(){
-	int process, machine;
-	double chain = 1;
-	double random = ((double)rand()/RAND_MAX);
-	//cout << "Outter random value: " << random << endl;
-	while(random < chain){
-		do{
-			process = rand() % var.processes_amount;
-			machine = rand() % var.machines_amount;
-			//cout << "process: " << process << ", machine: " << machine << endl;
-		}while(is_tabu(process, machine) || !valid_move(process, machine));
-		assign(process, machine);
-		//choose randomly if chain move
-		chain = chain * 0.5;
-		random = ((double)rand()/RAND_MAX);
-		//cout << "Inner random value: " << random << endl;
-	}
+	int process, machine, tries;
+	
+	tries = 0;
+	do{
+		tries ++;
+		process = rand() % var.processes_amount;
+		machine = rand() % var.machines_amount;
+		time_t timer;
+		time(&timer);
+		if(difftime(timer,var.timer) > var.max_time) break;
+	}while(((is_tabu(process, machine) || !valid_move(process, machine))) && tries < 5);
+	assign(process, machine);	
 }
 
 int main( int argc, char *argv[] ){
 	time_t timer1, timer2;
     time(&timer1);
+    var.timer = timer1;
+    var.max_time = atoi(argv[2]);
     srand(strtol(argv[10], NULL, 10));
+    
+	//cout << "argv 12 value: " << argv[12] << endl;
+	var.tabu_size = atoi(argv[12]);
+	var.output_filename = argv[8];
+	var.best_output_filename = argv[14];
+	tabu.list.resize(var.tabu_size);
 
-	cout << "Reading files" << endl;
+	//cout << "Reading files" << endl;
 	read_files(argv[4], argv[6]);
+	
 	cout << "Greedy" << endl;
 	greedy();
-
-	cout << "Tabu Search" << endl;
+	
+	/*cout << "Tabu Search" << endl;
 	while(true){
 		//cout << "new iteration" << endl;
 		time(&timer2);
-		if(difftime(timer2,timer1) > 300)return 0;
+		if(difftime(timer2,timer1) > var.max_time)return 0;
+		//cout << difftime(timer2,timer1) << "time: " << atoi(argv[2]) << endl;
 		tabu_search();
-	}
+	}*/
 	return 0;
 }
