@@ -504,7 +504,7 @@ void greedy(){
 	//cout << "swaping order to make it more random" << endl;
 	for(i=0; i < var.processes_amount/2; i++){
 		time(&timer);
-		if(difftime(timer,var.timer) > var.max_time) break;
+		if(difftime(timer,var.timer) > var.max_time) return;
 		init = rand() % var.processes_amount;
 		end = rand() % var.processes_amount;
 
@@ -517,7 +517,7 @@ void greedy(){
 	//cout << "filling possibilities" << endl;
 	for(i=0; i < var.processes_amount; i++){
 		time(&timer);
-		if(difftime(timer,var.timer) > var.max_time) break;
+		if(difftime(timer,var.timer) > var.max_time) return;
 		for(j=0; j < 3; j++){
 			machine = rand() % var.machines_amount;
 			//cout << "validating move" << endl;
@@ -530,7 +530,7 @@ void greedy(){
 		//cout << "selecting the best possibility" << endl;
 		for(j=0; j < possibilities.size(); j++){
 			time(&timer);
-			if(difftime(timer,var.timer) > var.max_time) break;
+			if(difftime(timer,var.timer) > var.max_time) return;
 			if(valid_move(i, possibilities.at(j))){
 				assign(i, possibilities.at(j));
 				new_value = sol.value;
@@ -556,12 +556,13 @@ void tabu_search(){
 		machine = rand() % var.machines_amount;
 		time_t timer;
 		time(&timer);
-		if(difftime(timer,var.timer) > var.max_time) break;
+		if(difftime(timer,var.timer) > var.max_time) return;
 	}while(((is_tabu(process, machine) || !valid_move(process, machine))) && tries < 5);
 	assign(process, machine);	
 }
 
 int main( int argc, char *argv[] ){
+	cout << '\a';
 	time_t timer1, timer2;
     time(&timer1);
     var.timer = timer1;
@@ -580,13 +581,13 @@ int main( int argc, char *argv[] ){
 	cout << "Greedy" << endl;
 	greedy();
 	
-	/*cout << "Tabu Search" << endl;
+	cout << "Tabu Search" << endl;
 	while(true){
 		//cout << "new iteration" << endl;
 		time(&timer2);
 		if(difftime(timer2,timer1) > var.max_time)return 0;
 		//cout << difftime(timer2,timer1) << "time: " << atoi(argv[2]) << endl;
 		tabu_search();
-	}*/
+	}
 	return 0;
 }

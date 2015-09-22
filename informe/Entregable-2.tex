@@ -1,0 +1,335 @@
+%% LyX 2.1.2 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[10pt,spanish,letter]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{verbose,headheight=1.5cm,headsep=0.5cm,footskip=1.5cm}
+\usepackage{amsmath}
+\usepackage{listings}
+\makeatletter
+
+\lstset{
+breaklines = true
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\usepackage[spanish]{babel}
+\usepackage{amsfonts}
+\usepackage[dvips]{graphicx}
+\usepackage{url}
+
+\makeatother
+
+\usepackage{babel}
+\addto\shorthandsspanish{\spanishdeactivate{~<>}}
+
+\begin{document}
+
+\title{Inteligencia Artificial \\
+ \begin{Large}Informe Final: Problema {[}Nombre Problema{]}\end{Large}}
+
+
+\author{Ignacio Ureta}
+
+
+\date{\today}
+
+\maketitle
+ 
+
+%--------------------No borrar esta secci\'on--------------------------------%
+
+
+\section*{Evaluaci\'on}
+
+\begin{tabular}{ll}
+Mejoras 1ra Entrega (10 \%):  & \underline{\hspace{2cm}}\tabularnewline
+C\'odigo Fuente (10 \%):  & \underline{\hspace{2cm}}\tabularnewline
+Representaci\'on (15 \%):  & \underline{\hspace{2cm}} \tabularnewline
+Descripci\'on del algoritmo (20 \%):  & \underline{\hspace{2cm}} \tabularnewline
+Experimentos (10 \%):  & \underline{\hspace{2cm}} \tabularnewline
+Resultados (10 \%):  & \underline{\hspace{2cm}} \tabularnewline
+Conclusiones (20 \%):  & \underline{\hspace{2cm}}\tabularnewline
+Bibliograf\'{i}a (5 \%):  & \underline{\hspace{2cm}}\tabularnewline
+ & \tabularnewline
+\textbf{Nota Final (100)}:  & \underline{\hspace{2cm}} \tabularnewline
+\end{tabular}%---------------------------------------------------------------------------%
+\begin{abstract}
+En el presente documento se describir\'a el problema de reasignaci\'on de m\'aquinas, presentado por google en desaf\'io ROADEF/EURO 2011-2012, el cu\'al consiste en asignar una serie de procesos a m\'aquinas con la idea de hacer mejor uso de las estas. Tambi\'en se describir\'a el estado del arte del problema para finalmente definir un modelo matem\'atico para utilizar en la futura implementaci\'on de un m\'etodo de resoluci\'on que se comparar\'a con lo encontrado en el estado del arte.
+\end{abstract}
+
+\section{Introducci\'on}
+
+En el presente trabajo se presentar\'a una descripci\'on del estado del arte del problema de reasignaci\'on de m\'aquinas de google, que consiste en optimizar la reasignaci\'on de procesos dentro de un conjunto de m\'aquinas de acuerdo a ciertos recursos que \'estas poseen, se presentar\'a adem\'as un modelo en base a este estudio para posteriormente ser utilizado en la resoluci\'on del problema, compar\'andolo con el estado del arte. Se comenzar\'a con la secci\'on 1, donde se describir\'a brevemente el problema, luego se continuar\'a en la secci\'on 2 donde se presentar\'a el estado del arte para finalmente presentar el modelo a utilizar a futuro 
+
+
+\section{Definici\'on del Problema}
+
+El problema de reasignaci\'on de m\'aquinas, presentado por google en el ROADEF/EURO challenge 2011-2012, consiste en un conjunto de m\'aquinas M y procesos P. La idea es asignar a cada proceso una m\'aquina respetando las siguientes restricciones:
+
+\subsection{Restricciones}
+\subsubsection{Capacidad}
+Cada m\'aquina tiene una cierta cantidad de cada recurso y cada proceso necesita cierta cantidad de recursos, la idea es asignar a cada proceso una m\'aquina de tal manera que la suma de recursos requeridos por los procesos de una m\'aquina no superen los recursos disponibles por \'esta
+\subsubsection{Servicios}
+Un servicio esta compuesto por un conjunto de procesos (el conjunto de servicios particiona el conjunto de procesos). Dos procesos de un mismo servicio no pueden correr en una misma m\'aquina
+\subsubsection{Distribuci\'on}
+Cada m\'aquina tiene una localizaci\'on. Los procesos de un servicio deben estar distribuidos entre al menos un m\'inimo de spreadMin ubicaciones
+\subsubsection{Dependencia}
+Un servicio puede depender de otro servicio. Una maquina pertenece a una vecindad de m\'aquinas. En caso que un servicio \begin{math}S_{a}\end{math} dependa de un servicio \begin{math}S_{b}\end{math}, todos los procesos de \begin{math}S_{a}\end{math} deben correr en m\'aquinas que sean vecinas a aquellas en que corre al menos alg\'un proceso de \begin{math}S_{b}\end{math}
+\subsubsection{Uso transitorio}
+Al transferido un proceso a una nueva m\'aquina, no se pueden liberar los recursos que \'este estaba utilizando en la m\'aquina inicial hasta no haber acabado el proceso, y ya que no hay una variable tiempo en el problema, se asume que todos los cambios son realizados en el mismo momento, por lo que un proceso reasignado utilizar\'a recursos tanto en la m\'aquina donde estaba como en la que va a estar.
+
+
+
+\subsection{Objetivos}
+Los objetivos consisten en mejorar la utilizaci\'on del conjunto de m\'aquinas, minimizando una funci\'on de costos compuesta por los distintos tipos de costos del problema, cada tipo de costos con sus propios pesos
+\subsubsection{Costo de Carga}
+Existe una umbral de seguridad para cada recurso en cada m\'aquina, pasada \'esta cantidad, se incurre en un costo que es igual a la cantidad de ese recurso que se utiliza por sobre el umbral de seguridad
+\subsubsection{Costo de Balance}
+La idea es balancear los recursos utilizados en cada m\'aquina, de manera que no queden m\'aquinas sin cierto recurso (o con muy poco), ya que el tener determinado recurso y no de otro es in\'util en t\'erminos de futuras asignaciones. El costo de tener una m\'aquina desbalanceada ser\'a igual a la diferencia de las capacidades restantes de cada recurso (las diferencias son calculadas por pares de recursos, y a cada par se le asigna un cierto peso)
+\subsubsection{Costo de movimiento de proceso}
+Existen algunos procesos que son particularmente complicados de cambiar de m\'aquina. El costo de movimiento de proceso viene a representar ese costo, el cual es asignado por proceso.
+\subsubsection{Costo de movimiento de servicio}
+Es el n\'umero m\'aximo de procesos movidos por servicio entre todos los servicios
+\subsubsection{Costo de movimiento de m\'aquina}
+Cada proceso al ser reasignado a una nueva m\'aquina tiene un cierto costo, la suma de todos los costos de los procesos reasignados compone \'este tipo de costo.
+
+Finalmente, la funci\'on de costos a minimizar queda:
+
+	\begin{math}
+		Min\;costoTotal = 
+			\sum_{m \in M} peso_{costoCarga} \cdot \sum_{r \in R} max(0, U_{mr}-SC_{mr})
+			+ \sum_{b \in B} peso_{costoBalance} \cdot \sum_{m \in M} max(0, peso \cdot (D_{mr_{1}}-D_{mr_{1}}))
+			+peso_{costoMoverProceso} \cdot \sum_{X_{p} \not = X_{0p}} PMC(p)
+			+peso_{costoMoverServicio} \cdot max(p \in S_{i}, X_{p} \not = X_{0p})
+			+peso_{costoMoverMaquina} \cdot \sum_{p \in P} MMC(p)
+	\end{math}
+
+Es importante recalcar que a pesar del gran espacio de b\'usqueda del problema y la complejidad de las restricciones que debe cumplir, se debe encontrar una soluci\'on en tiempos muy limitados (en el desaf\'io los concursantes dispon\'ian de tan solo 5 minutos), lo que hace m\'as complejo el problema e impide que ciertos tipos de t\'ecnicas sean utilizadas
+
+
+
+\section{Estado del Arte}
+
+El problema de reasignaci\'on de m\'aquinas fue presentado en el desaf\'io ROADEF/EURO 2011-2012 como uno de los desaf\'ios a resolver (el cual fue descrito en la secci\'on anterior). El espacio de b\'usqueda del problema es demasiado extenso, raz\'on por la cual las t\'ecnicas completas no son una buena aproximaci\'on para este problema. Es por esto que se utilizan heur\'isticas para resolver el problema. Algunas de las heur\'isticas utilizadas son las de programaci\'on entera (solo para instancias peque\'nas), b\'usqueda local aleatoria (para instancias peque\'nas), Satisfacci\'on de restricciones con b\'usqueda en una gran vecindad (CSP with LNS), recocido simulado y  b\'usqueda local h\'ibrida, obteniendo los mejores resultados este \'ultimo, muy cercanos a los \'optimos (adem\'as del primer lugar en el desaf\'io).
+
+El algoritmo con los mejores resultados (b\'usqueda local h\'ibrida) funciona de la siguiente manera:
+
+Se inicia con una soluci\'on v\'alida. Se ordenan todos los procesos en una lista ordenada de acuerdo con los requerimientos absolutos de cada proceso. Se asigna en n\'umero de procesos a considerar en cero (N = 0). Luego para cada iteraci\'on se aumenta el n\'umero de procesos a considerar y se intenta mejorar la soluci\'on reasignando solo los procesos de la lista que vayan de la posici\'on uno a la N, lo que se repite hasta que todos los procesos son considerados para su reasignaci\'on. 
+
+Para la generaci\'on de vecindades, la heur\'istica utiliza cuatro tipos de movimientos: Shift, mover un proceso; Swap, intercambiar dos procesos, cada uno en una m\'aquina diferente. Los dos anteriores son los tipos de movimientos m\'as comunes en la literatura. Adem\'as se utilizan los movimientos de BPR (big process reassignement), en el que un proceso que requiere grandes cantidades de recursos se cambia a otra m\'aquina, moviendo varios procesos m\'as peque\'nos y Chain, que consiste en hacer una cadena de intercambios de procesos, donde el proceso uno toma la posici\'on del proceso dos, el proceso dos del proceso tres, y as\'i hasta el proceso en\'esimo, el cu\'al toma la posici\'on del proceso uno.
+
+Las vecindades exploradas por los anteriores movimientos se revisan en el siguiente orden: BPR, shift, swap y chain. Cada uno explora hasta que cumple un criterio de parada, ya sea tiempo de ejecuci\'on o bien un m\'inimo de mejora en la soluci\'on. Luego de terminar, le da paso al siguiente tipo de movimiento.
+
+Para aumentar la diversificaci\'on del m\'etodo y as\'i escapar de \'optimos locales, se utiliza un m\'etodo llamado ''shake'', el cual consiste en elegir un recurso y cambiar su costo de carga, con lo que se puede escapar de un \'optimo local.
+
+Es importante recalcar que se determin\'o experimentalmente en ''An algorithmic Study of the Machine Reassignement Problem'' que Cambiar todos los procesos de unas cuantas m\'aquinas tiene mejores resultados que cambiar unos pocos procesos de cada una de todas las m\'aquinas (sin embargo los resultados dependen mucho de los criterios de selecci\'on de estas m\'aquinas) y que la b\'usqueda a trav\'es del espacio de los infactibles no es muy efectiva ya que volver de ellos al espacio factible es muy dif\'icil (y que una penalizaci\'on en la funci\'on objetivo no es suficiente para cumplir con ese cometido).
+
+
+\section{Modelo Matem\'atico}
+
+\subsection{Funci\'on de evaluaci\'on}
+
+	\begin{math}
+		Min\;costoTotal = 
+			\sum_{m \in M} peso_{costoCarga} \cdot \sum_{r \in R} max(0, U_{mr}-SC_{mr})
+			+ \sum_{b \in B} peso_{costoBalance} \cdot \sum_{m \in M} max(0, peso \cdot (D_{mr_{1}}-D_{mr_{1}}))
+			+peso_{costoMoverProceso} \cdot \sum_{X_{p} \not = X_{0p}} PMC(p)
+			+peso_{costoMoverServicio} \cdot max(p \in S_{i}, X_{p} \not = X_{0p})
+			+peso_{costoMoverMaquina} \cdot \sum_{p \in P} MMC(p)
+	\end{math}
+
+\subsection{Variables}
+\begin{math}X_{p}\end{math}: M\'aquina en la que corre el proceso P
+
+\begin{math}U_{mr}\end{math}: Cantidad del recurso R utilizado por la m\'aquina M (variable dependiente)
+
+
+\subsection{Constantes}
+\begin{math}X_{0p}\end{math}: M\'aquina inicial del proceso P
+
+\begin{math}C_{p}\end{math}: Booleano, 1 si el proceso p ha sido reasignado, 0 si no
+
+\begin{math}C_{mr}\end{math}: Capacidad en la m\'aquina M del recurso R
+
+\begin{math}SC_{mr}\end{math}: Capacidad de seguridad de la m\'aquina M del recurso R
+
+\begin{math}R_{pr}\end{math}: Requerimiento del recurso R para el proceso P
+
+\begin{math}S_{p}\end{math}: Servicio al que pertenece el proceso P
+
+\begin{math}L_{m}\end{math}: Localizaci\'on a la que pertenece la m\'aquina M
+
+\begin{math}V_{M_{j}M_{k}}\end{math}: Booleano, 1 si la m\'aquina \begin{math}M_{j}\end{math} es vecina a \begin{math}M_{k}\end{math}, 0 si no
+
+\begin{math}D_{S_{j}S_{k}}\end{math}: Booleano, 1 si el servicio \begin{math}S_{j}\end{math} depende del servicio \begin{math}S_{k}\end{math}, 0 si no 
+\subsection{Restricciones}
+\subsubsection{Capacidad} 
+
+	\begin{math}C_{mr} \geq \sum R_{pr}  \forall p tq X_{p},X_{0p} = m\end{math}
+
+\subsubsection{Servicios} 
+
+	\begin{math}X_{p_{i}}  \not= X_{p_{j}}  si S_{P_{i}} = S_{P_{j}}  \end{math}
+
+\subsubsection{Distribuci\'on}
+
+	\begin{math}N(distinct(Lm)) \geq spreadmin  \forall m tq X_{p}=m y p \in S\end{math}
+
+\subsubsection{Dependencia}
+	
+	\begin{math} D_{S_{j} S_{l}}  = 1 => V_{X_{Pi} X_{Pk}} = 1 \forall  P_i  \in S_{j},P_{k}  \in S_{l}\end{math}
+
+\subsubsection{}
+Uso transitorio
+	Considerada en la restricci\'on de capacidad.
+
+
+\section{Representaci\'on}
+
+El sistema se sustenta en varias estructuras, las principales son: Machine, Resource, Service, Process, Variables (para las constantes), Solution, Possible\_moves y Tabu\_list.
+
+Los primeros 4 son elementos del problema y representan lo que su nombre dice. Existe un arreglo de cada uno de ellos dentro de Variables. Por ejemplo, si hay 4  m\'aquinas en el problema, habr\'a un arreglo de 4 m\'aquinas dentro de Variables. Cada una de estas estructuras almacena los datos para su correcto funcionamiento, muchos de los cuales son solo de consulta, pero hay otros de apoyo que ayudan al algoritmo a funcionar de mejor manera
+
+\subsection{M\'aquinas}
+Vecindad: contiene la vecindad a la que pertenece\\
+Location: contiene la ubicaci\'on donde se encuentra\\
+Capacities: contiene un arreglo de capacidades de cada recurso\\
+Safety Capacities: contiene un arreglo de capacidades de seguridad de cada recurso\\
+Resources Used: contiene un arreglo de las capacidades utilizadas de cada recurso para mantener el estado de uso de la m\'aquina\\
+
+\subsection{Resource}
+Transient: booleano que define si el recurso es transiente o no\\
+Weight Load Cost: int que representa el costo de carga\\
+
+No se opera sobre el struct resource, solo se utiliza para leer datos.\\
+
+\subsection{Service}
+Spread Min: entero con el m\'inimo de ubicaciones en las que se debe distribuir el servicio\\
+Amout Of Dependencies: entero con la cantidad de dependencias del servicio\\
+Dependent On Service: arreglo de todos los servicios de los que depende\\
+Locations: Arreglo de las ubicaciones en las que se encuentra el servicio. Este se actualiza cada vez que un proceso que pertenece a \'el se mueve.\\
+
+La Estructura de servicio solo se utiliza para leer datos y usar el arreglo Locations para verificar que la condici\'on de spread\_min se cumple.\\
+
+\subsection{Process}
+Service: entero que indica el \'indice donde se ubica su servicio\\
+Requirements: arreglo que indica cuanto requiere de cada recurso para funcionar\\
+Process Move Cost: entero que representa el costo de mover este proceso\\
+
+Process tambi\'en es una estructura de solo lectura.\\
+
+\subsection{Variables}
+resources amount: entero de la cantidad de recursos existentes\\
+machines amount: entero de la cantidad de maquinas existentes\\
+services amount: entero de la cantidad de servicios existentes\\
+processes amount: entero de la cantidad de procesos existentes\\
+balance costs amount: entero de la cantidad de costos de balance existentes\\
+    
+process move cost: entero del costo de mover un proceso\\
+service move cost: entero del costo de mover un servicio\\
+machine move cost: entero del costo de mover una m\'aquina\\
+
+resources: arreglo que almacena todos los recursos.\\
+machines: arreglo que almacena todas las m\'aquinas.\\
+services: arreglo que almacena todos los servicios.\\
+processes: arreglo que almacena todos los procesos.\\
+balance costs: arreglo que almacena todos los costos de balance.\\
+
+Esta es la estructura principal del sistema, existe como estructura global y almacena todos los datos del sistema.
+
+\subsection{Solution}
+best value: double con el mejor valor hasta el momento\\
+value: double con el valor de la solucion actual\\
+best process asignations: arreglo con las asignaciones de la mejor solucion\\
+process asignations: arreglo con las asignaciones de la solucion actual\\
+initial solution: arreglo con las asignaciones de la solucion inicial\\
+
+Esta es una de las estructuras principales del sistema, es global y se opera en casi todos sus campos para ir generando y evaluando nuevas soluciones.
+
+\subsection{Tab\'u list}
+List: arreglo con los valores de la lista tabu (guarda los \'ultimos procesos que fueron cambiados)\\
+length: largo de la lista tabu\\
+
+Con esta estructura se maneja la navegacion del m\'etodo Tab\'u Search (TS)\\
+
+\section{Descripci\'on del algoritmo}
+
+El algoritmo utilizado es una mezcla de las heur\'isticas de algoritmo Greedy con Tab\'u Search. 
+
+Se utiliza el algoritmo Greedy para generar una solución inicial lo más rápido posible para comenzar a iterar con Tabú Seach. Para generar la soluci\'on inicial con el algoritmo Greedy, se introducen todos los procesos en una lista y luego se reordenan de manera aleatoria. Luego para cada proceso se seleccionan 3 máquinas de forma aleatoria y se evalúan las soluciónes resultantes de mover ese proceso a cada una de las 3 máquinas. Finalmente, se ejecuta el movimiento que genere la solución con menor costo, y solo si ésta es de menor valor que la solución actual. As\'i se hace para cada uno de los procesos, generando una soluci\'on inicial en base a una funci\'on miope que no se preocupa de que la distribución de los procesos sea la mejor, solo que cada proceso sea asignado en la máquina que genere una mejor solución que la actual. 
+
+Para mejorar esa soluci\'on, el algoritmo de Tab\'u search elige al azar un proceso y una máquina, se verifica si el movimiento de ese proceso a esa máquina no está dentro de la lista tab\'u y si es un movimiento válido (que al realizarlo se sigan respetando todas las restricciones). Si no cumple alguna de las dos condiciones, se eligen otros valores al azar para ambas variables hasta que se elijan unos que cumplan ambas condiciones. Una vez obtenidos estos dos valores, se ejecuta el movimiento y para  finalizar, se actualizan las cargas de cada m\'aquina, se actualizan los servicios presentes en cada máquina, ubicación y vecindario, se recalcula el valor de la solucion y se verifica si es mejor solucion que la mejor solución actual, en tal caso, se cambian los valores y se imprime la solución.
+
+A continuaci\'on, se detallar\'an las partes más relevantes del c\'odigo y se explicará su funcionalidad
+
+\subsection{Algoritmo Greedy}
+
+\begin{lstlisting}
+Greedy
+	agregar todos los procesos a una lista
+	reordenarlos aleatoriamente
+	para cada proceso:
+		seleccionar aleatoriamente 3 maquinas
+		para cada maquina:
+			si movimiento_valido(proceso,maquina), guardar
+		para cada maquina guardada:
+			calcular valor de la solucion con ese movimiento
+			si valor < mejor_valor, guardar
+		si mejor_valor < mejor_valor solución, asignar(maquina, proceso)
+\end{lstlisting}
+
+\subsection{Algoritmo Tabu Search}
+
+\begin{lstlisting}
+Tabu Search
+	repetir hasta que tiempo_pasado >= tiempo_maximo
+		hacer:
+			elegir un proceso
+			elegir una maquina
+		mientras !movimiento_valido(proceso,maquina) o es_tabu(proceso, maquina), repetir
+		asignar(maquina, proceso)
+		actualizar servicios y recursos
+		si valor solucion actual < valor mejor solucion, actualizar mejor solucion e imprimir
+\end{lstlisting}
+
+\subsection{Algoritmo Valid\_Move}
+
+\begin{lstlisting}
+Valid_Move
+	si maquina no contiene servicio del proceso
+		si vecindario de maquina contiene todas las dependencias del servicio de proceso
+			si maquina tiene los recursos para almacenar proceso
+				si servicio del proceso se distribuye en al menos spread_min locaciones
+					retornar verdadero
+	en otro caso, retornar falso
+\end{lstlisting}
+
+
+\section{Experimentos}
+
+Se realizaron experimentos sobre las instancias a1\_1, a1\_2, a1\_3 y a1\_5, en cada una se realizaron 2 pruebas, una con un tiempo máximo de 500 segundos y un largo tabu de 2 y otra con un largo de 700 segundos y un largo de lista tabu de 5. Los resultados se incluyen en la carpeta instances con los nombres: salida para la solucion con mejor resultado y best\_salida que en cada linea incluye los segundos que tardo y el valor de la solucion. Existe uno de estos archivos para cada ejecucion realizada
+
+\section{Conclusiones}
+
+Cada vez es mayor el uso de las tecnolog\'ias de virtualizaci\'on, ya sea en aplicaciones m\'edicas, econ\'omicas, astron\'omicas. Es por esto que es de suma relevancia hacer m\'as eficiente esta herramienta para dispones de una mayor cantidad de recursos con los que trabajar. Es en ese contexto que el problema de reasignaci\'on de m\'aquinas tiene relevancia. 
+
+El proceso de reasignaci\'on de m\'aquinas se hace continuamente, por lo que es necesario contar con una herramienta de optimizaci\'on que logre generar una distribuci\'on de procesos en las m\'aquinas en tiempos muy limitados (en el caso del desaf\'io, los concursantes solo dispon\'ian de 300 segundos de tiempo de ejecuci\'on para sus algoritmos). Debido a esto, una t\'ecnica completa no es posible de usar, por lo que es necesario usar heur\'isticas, heur\'isticas que sean capaces de encontrar buenas soluciones en poco tiempo.
+
+Las dos heur\'isticas que obtuvieron mejores resultados fueron recocido simulado y un h\'ibrido de b\'usqueda local, siendo la mejor esta \'ultima. Las mayores diferencias que ten\'ia esta \'ultima era que utiliza dos movimientos extras (BPR y Chain) que le permiten generar distintos tipos de vecindades, adem\'as que prioriza la reasignaci\'on de los procesos m\'as grandes versus los de menor tama\~{n}o, lo que le permite revisar primero espacios de b\'usqueda con distintas posiciones de los procesos m\'as grandes, optimizando sus posiciones antes de comenzar a mover los procesos de menor tama\~{n}o, lo que mostr\'o en la pr\'actica lograr mejores resultados.
+
+Adem\'as, se encontr\'o experimentalmente que trabajar en el espacio de las soluciones infactibles es una mala opci\'on ya que volver de esas soluciones al espacio de los factibles es muy costoso y que es mejor mover todos los procesos de un grupo de m\'aquinas que mover unos pocos procesos de cada m\'aquina entre todas las m\'aquinas, sin embargo, los resultados dependen mucho de los criterios de selecci\'on de estas m\'aquinas.
+
+\section{Bibliograf\'ia}
+\noindent{$[1]$	Gabriel Marques Portal, ``An Algorithmic Study of the Machine Reassignement Problem'', Porto Alegre, 2012.\\}
+$[2]$	Google, ``Machine Reassignement problem description'', ROADEF/EURO challenge 20111-2012\\
+$[3]$	Haris Gavranovic, Mirsad Buljubasic, Emir Demirovic, ``Variable Neighborhood Search for Google Machine Reassignement problem'', Electronic Notes in Discrete Mathematics 39 (2012)\\
+$[4]$	Deepak Mehta, Barry O'Sullivan, Helmut Simonis, ``Comparing Solution Methods for the Machine Reassignment Problem'', M. Milano (Ed.): CP 2012, LNCS 7514, pp. 782–797, 2012\\
+\bibliographystyle{plain}
+\bibliography{Referencias}
+ 
+\end{document}

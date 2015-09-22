@@ -1,0 +1,6 @@
+./mrp -t 500 -p instances/a1_2/model_a1_2.txt -i instances/a1_2/assignment_a1_2.txt -o instances/a1_2/salida_a1_2_500_2.txt -s 100 -ts 2 -fb instances/a1_2/best_salida_a1_2_500_2.txt
+./mrp -t 500 -p instances/a1_2/model_a1_2.txt -i instances/a1_2/assignment_a1_2.txt -o instances/a1_2/salida_a1_2_500_5.txt -s 100 -ts 5 -fb instances/a1_2/best_salida_a1_2_500_5.txt
+./mrp -t 500 -p instances/a1_2/model_a1_2.txt -i instances/a1_2/assignment_a1_2.txt -o instances/a1_2/salida_a1_2_500_7.txt -s 100 -ts 7 -fb instances/a1_2/best_salida_a1_2_500_7.txt
+./mrp -t 700 -p instances/a1_2/model_a1_2.txt -i instances/a1_2/assignment_a1_2.txt -o instances/a1_2/salida_a1_2_700_2.txt -s 100 -ts 2 -fb instances/a1_2/best_salida_a1_2_700_2.txt
+./mrp -t 700 -p instances/a1_2/model_a1_2.txt -i instances/a1_2/assignment_a1_2.txt -o instances/a1_2/salida_a1_2_700_5.txt -s 100 -ts 5 -fb instances/a1_2/best_salida_a1_2_700_5.txt
+./mrp -t 700 -p instances/a1_2/model_a1_2.txt -i instances/a1_2/assignment_a1_2.txt -o instances/a1_2/salida_a1_2_700_7.txt -s 100 -ts 7 -fb instances/a1_2/best_salida_a1_2_700_7.txt
